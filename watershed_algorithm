@@ -1,0 +1,105 @@
+#Date:12/23/18
+#author: Chris Rzepa
+#This code implements a subprocess of the watershed algorthm for finding the phase seperation
+#within a PNPD for grand canaonical transition matrix montecarlo. The ln pi data
+#is stretched to ensure peak_local_max works-although a later version will optimize this
+#to use as little data points as possible. The stretched array is passed through peak_local_max
+#which identifies the coordinates of local maxima. Tese coordinates are used as the 'upper'
+#and 'lower' boudnares for the 'min' command to find the coordinate of phase seperation.
+ 
+import matplotlib.pyplot as plt
+import numpy as np
+import re
+from scipy import ndimage as ndi
+from skimage.feature import peak_local_max
+from skimage import data, img_as_float
+
+#extracting data from colMat &/or colMatrw.txt
+
+#main list for collecting colMAt data.
+data=[]
+
+# Function checks if the string  contains special character #
+def run(string):
+
+    # Make own character set and pass
+    # this as argument in compile method
+    regex = re.compile('#')
+
+    # Pass the string in search
+    # method of regex object.
+    if not (re.match(regex, string)):
+        data.append(line.split(' '))
+
+
+
+#file_object = open("colMat","r") #read collection matrix
+file_object = open("colMatrw1.txtrw","r") #read collection matrix
+lines = file_object.read().split("\n") #split collection matrix by line
+lines = np.asarray(lines) #convert lines list into array
+
+
+
+
+for line in lines: #iterate over lines until find line without '#'
+        run(line)
+
+#reshaping matrix and removing blank line found in bottom of colMat
+data = np.concatenate((data), axis=0)
+data =np.delete(data, -1)
+data = np.asarray(data)  #Converts data list into array.
+data = np.reshape(data, ((401),13)) #must provide matrix dimensions
+data = data.astype(np.float) #converts all characters to float
+
+#==============================================================================
+#This is where the code begins identification of phase speration boundary.
+
+
+#cloning data or 'stretching' by making square matrix of ln pi from colMAt. This is necessary for peak_local_max
+stretched_data = np.ones((401,1)) * np.transpose(data[:,1])
+
+#Creating maximum filter-making constrast gradient among gray-scale pixels more prominent
+image_max = ndi.maximum_filter(stretched_data, size=50, mode='constant')
+
+#obtaining coordinates of local max
+coordinates = peak_local_max(stretched_data, min_distance=5)
+
+#Finding phase seperation
+lower=min(coordinates[:,1])
+upper=max(coordinates[:,1])
+phase_sep=min(data[lower:upper,1])
+print(phase_sep)
+
+
+# display results
+fig, axes = plt.subplots(1, 3, figsize=(8, 3), sharex=True, sharey=True)
+ax = axes.ravel() #returns flattened array
+ax[0].imshow(stretched_data, cmap=plt.cm.gray)
+ax[0].axis('off')
+ax[0].set_title('Original')
+
+ax[1].imshow(image_max, cmap=plt.cm.gray)
+ax[1].axis('off')
+ax[1].set_title('Maximum filter')
+
+ax[2].imshow(stretched_data, cmap=plt.cm.gray)
+ax[2].autoscale(False)
+ax[2].plot(coordinates[:, 1], coordinates[:, 0], 'r.')
+ax[2].axis('on')
+ax[2].set_title('Peak local max')
+
+fig.tight_layout()
+plt.savefig('watershed.png')
+
+
+#2-D plot of ln_pi
+plt.figure(2)
+simulation=plt.plot(data[:,0], data[:,1], 'ro--', linewidth=2, markersize=1, label='simulation')
+plt.ylabel('ln(pi)')
+plt.ylabel('PE')
+plt.xlabel('N')
+plt.legend(loc='upper left')
+plt.show()
+
+
+file_object.close()
