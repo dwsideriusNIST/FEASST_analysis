@@ -129,6 +129,7 @@ class feasst_analysis(lnPi.lnPi_phases):
                               argmax_kwargs=dict(min_distance=[5,10,20,40]),
                               ftag_phases=ftag_phases)
         child.energy = np.array(energy)
+        child.canSx = False
         
         return child
 
