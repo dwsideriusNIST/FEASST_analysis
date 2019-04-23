@@ -103,7 +103,7 @@ class feasst_analysis(lnPi.lnPi_phases):
         child.canSx = False
         
         return child
-
+    
     # Override the base class reweight method because we need the returned object to carry sublcass attributes
     #  NOTE: If it is necessary to derive a class *from this derived class*, then a new reweight method
     #        will be needed
@@ -158,6 +158,10 @@ class feasst_analysis(lnPi.lnPi_phases):
     # PROPERTIES
     #FIGURE OUT HOW TO USE WPK'S CACHE OPS TO SAVE TIME HERE
 
+    @property
+    def pressure(self):
+        return -self.Omegas()/self.base.volume
+    
     def generic_property(self,canonical_property):
         try:
             if canonical_property.shape != self.base.data.shape:
@@ -168,11 +172,25 @@ class feasst_analysis(lnPi.lnPi_phases):
             raise AttributeError('Unknown canonical property')
         Prop_avg = np.array([ (x.pi_norm*canonical_property).sum(axis=-1) for x in self ])
         return Prop_avg
+
+    def fluctuation(self,property_A,property_B):
+        try:
+            if property_A.shape != self.base.data.shape or property_B.shape != self.base.data.shape:
+                raise AttributeError('Canonical property array is wrong size')
+            if type(property_A) != np.ndarray or type(property_B) != np.ndarray:
+                raise AttributeError('Canonical property array must be a NumPy array')
+        except:
+            raise AttributeError('Unknown canonical property')
+        ABvec = np.multiply(property_A,property_B) #Hadamard product
+        fAB = np.array([ (x.pi_norm*ABvec).sum(axis=-1)
+                         -((x.pi_norm*property_A).sum(axis=-1))*((x.pi_norm*property_B).sum(axis=-1))
+                         for x in self ])
+        return fAB
             
     @property
     def Uaves(self):
         return self.generic_property(self.energy)
-
+    
     @property
     def Saves_Gibbs(self):
         # Gibbs Entropy
@@ -187,6 +205,30 @@ class feasst_analysis(lnPi.lnPi_phases):
         #Boltzmann Entropy
         S_avg = self.base.beta*(self.Uaves - np.dot(self.base.mu,self.Naves) - self.Omegas())
         return S_avg
+
+    @property
+    def N_fluc(self):
+        return self.fluctuation(self.coords[0],self.coords[0])
+
+    @property
+    def U_fluc(self):
+        return self.fluctuation(self.energy,self.energy)
+
+    @property
+    def UN_fluc(self):
+        return self.fluctuation(self.energy,self.coords[0])
+
+    @property
+    def SN_fluc(self):
+        if not self.canSx:
+            # Compute the Canonical Entropies
+            self.canonical_Sx
+        return self.fluctuation(self.Sx,self.coords[0])
+
+    @property
+    def gibbs_S(self):
+        return np.array([(x.pi_norm * np.log(x.pi_norm)).reshape(x.ndim,-1).sum(axis=-1).data
+                         for x in self])
     
     @property
     def canonical_Sx(self):
