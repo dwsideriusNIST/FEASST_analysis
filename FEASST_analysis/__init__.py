@@ -103,6 +103,32 @@ class feasst_analysis(lnPi.lnPi_phases):
         child.canSx = False
         
         return child
+
+    def trim_1D(self,Nmax):
+        # REWRITE THIS FUNCTION TO DO AN IN-PLACE MODIFICATION OF SELF
+        #Truncate lnPi, coords, energy, entropy (if applicable) at Nmax
+
+        new_lnpi = np.array([ [float(Ni), lnPii] for Ni,lnPii in zip(self.base.coords[0],self.base.data) if Ni <= Nmax ])
+        mu = self.base.mu
+        beta = self.base.beta
+        volume = self.base.volume
+        ftag_phases = self._ftag_phases
+
+        child = self.from_data(new_lnpi,
+                               mu=mu,
+                               volume=volume,
+                               beta=beta,
+                               num_phases_max=2,
+                               argmax_kwargs=dict(min_distance=[5,10,20,40]),
+                               ftag_phases=ftag_phases)
+        child.energy = np.array([ energyi for Ni,energyi in zip(self.base.coords[0],self.energy) if Ni <= Nmax ])
+        child.energy2 = np.array([ energy2i for Ni,energy2i in zip(self.base.coords[0],self.energy2) if Ni <= Nmax ])
+        if self.canSx == True:
+            child.canSx = True
+            child.Sx = np.array([ Sxi for Ni,Sxi in zip(self.base.coords[0],self.Sx) if Ni <= Nmax ])
+        else:
+            child.canSx = False
+        return child
     
     # Override the base class reweight method because we need the returned object to carry sublcass attributes
     #  NOTE: If it is necessary to derive a class *from this derived class*, then a new reweight method
