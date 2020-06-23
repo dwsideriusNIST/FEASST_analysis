@@ -1,4 +1,3 @@
-import feasst
 import lnPi
 import os
 import copy
