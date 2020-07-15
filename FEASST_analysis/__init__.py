@@ -34,11 +34,12 @@ class feasst_analysis(lnPi.lnPi_phases):
     def from_restart(cls,
                      source,
                      prefix,
+                     suffix,
                      ftag_phases=None):
         #Constructor method to build object from FEASST restart file(s)
 
-        # Read in N, lnPi, and energy data from FEASST v0.6 restart files
-        N, lnPi, energy, beta, lnZ, volume = data_abstraction(source,prefix)
+        # Read in N, lnPi, and energy data from new FEASST checkpoint files
+        N, lnPi, energy, beta, lnZ, volume = data_abstraction(source,prefix,suffix)
         
         # Convert lnPi to format required by lnPi Class
         lnPi_data = np.array([ [float(Ni), lnPii] for Ni,lnPii in zip(N,lnPi) ])
