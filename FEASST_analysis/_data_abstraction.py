@@ -3,8 +3,8 @@ import os
 import numpy as np
 import feasst as fst
 import pyfeasst as pyfst
-sys.path.insert(0, fst.install_dir() + '/plugin/monte_carlo/tutorial/')
-import analyze
+#sys.path.insert(0, fst.install_dir() + '/plugin/monte_carlo/tutorial/')
+#import analyze
 import copy
 
 from ._append_operations import *
@@ -51,8 +51,8 @@ def data_abstraction(source,prefix,suffix):
         
     # Ensemble Constraints
     volume = monte_carlo.configuration().domain().volume()
-    beta = monte_carlo.criteria().beta()
-    lnZ = monte_carlo.criteria().beta_mu()
+    beta = monte_carlo.thermo_params().beta()
+    lnZ = monte_carlo.thermo_params().beta_mu()
 
     # #Convert to NumPy Arrays
     N = np.array(N)
