@@ -35,11 +35,13 @@ class feasst_analysis(lnPi.lnPi_phases):
                      source,
                      prefix,
                      suffix,
+                     splice_type='smoothed',
                      ftag_phases=None):
         #Constructor method to build object from FEASST restart file(s)
 
         # Read in N, lnPi, and energy data from new FEASST checkpoint files
-        N, lnPi, energy, beta, lnZ, volume = data_abstraction(source,prefix,suffix)
+        N, lnPi, energy, energy2, beta, lnZ, volume = data_abstraction(source,prefix,suffix,
+                                                                       splice_type=splice_type)
         
         # Convert lnPi to format required by lnPi Class
         lnPi_data = np.array([ [float(Ni), lnPii] for Ni,lnPii in zip(N,lnPi) ])
@@ -53,6 +55,7 @@ class feasst_analysis(lnPi.lnPi_phases):
                               argmax_kwargs=dict(min_distance=[5,10,20,40]),
                               ftag_phases=ftag_phases)
         child.energy = np.array(energy)
+        child.energy2 = np.array(energy2)
         child.canSx = False
         
         return child
