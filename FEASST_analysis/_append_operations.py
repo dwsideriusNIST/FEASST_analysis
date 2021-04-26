@@ -78,6 +78,7 @@ def append_data_smoothed(N0,array0,N1,array1):
         else:
             array_out.append( array_out[-1] + array1[Ni-ref_min] - array1[Ni-ref_min-1] )
             N_out.append(N_out[-1]+1)
+
     return N_out, array_out
 
 
@@ -98,7 +99,7 @@ def append_data_smoothed2(N0,array0,N1,array1):
         # determine a delta function, based on weighting between the overlapping windows
         if Ni <= N_overlap[-1]:
             weight = float(Ni - N_overlap[1]) / float(len(N_overlap)-2)
-            array_out[Ni] = (1. - weight)*array_out[Ni-1] + weight*array1[Ni-ref_min]
+            array_out[Ni] = (1. - weight)*array_out[Ni] + weight*array1[Ni-ref_min]
         else:
             array_out.append( array1[Ni-ref_min] )
             N_out.append(N_out[-1]+1)
