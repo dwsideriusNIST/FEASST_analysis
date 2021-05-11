@@ -42,6 +42,39 @@ class feasst_analysis(lnPi.lnPi_phases):
         # Read in N, lnPi, and energy data from new FEASST checkpoint files
         N, lnPi, energy, energy2, beta, lnZ, volume = data_abstraction(source,prefix,suffix,
                                                                        splice_type=splice_type)
+
+        # Convert lnPi to format required by lnPi Class
+        lnPi_data = np.array([ [float(Ni), lnPii] for Ni,lnPii in zip(N,lnPi) ])
+
+        #Build class object using "from_data" method in parent class
+        child = cls.from_data(lnPi_data,
+                              mu=lnZ/beta,
+                              volume=volume,
+                              beta=beta,
+                              num_phases_max=2,
+                              argmax_kwargs=dict(min_distance=[5,10,20,40]),
+                              ftag_phases=ftag_phases)
+        child.energy = np.array(energy)
+        child.energy2 = np.array(energy2)
+        child.canSx = False
+
+        return child
+
+    @classmethod
+    def from_logs(cls,
+                  source,
+                  prefix,
+                  suffix,
+                  beta,
+                  volume,
+                  lnZ,  #betamu
+                  splice_type='smoothed',
+                  ftag_phases=None):
+        #Constructor method to build object from FEASST log files.
+        #  WARNING: this method assumes 'standard' forms for the criteria and energy files
+
+        # Read in N, lnPi, and energy data from new FEASST checkpoint files
+        N, lnPi, energy, energy2 = data_abstraction_logs(source,prefix,suffix,splice_type=splice_type)
         
         # Convert lnPi to format required by lnPi Class
         lnPi_data = np.array([ [float(Ni), lnPii] for Ni,lnPii in zip(N,lnPi) ])

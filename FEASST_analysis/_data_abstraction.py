@@ -1,6 +1,7 @@
 import sys
 import os
 import numpy as np
+import pandas as pd
 import feasst as fst
 import pyfeasst as pyfst
 #sys.path.insert(0, fst.install_dir() + '/plugin/monte_carlo/tutorial/')
@@ -136,3 +137,82 @@ def data_abstraction(source,prefix,suffix,splice_type='smoothed'):
     energy = energy - energy[0]
     
     return N, lnPi, energy, energy2, beta, lnZ, volume
+
+
+
+def data_abstraction_logs(source,prefix,suffix,splice_type='smoothed'):
+
+    # Correct paths that do not end in /
+    if source[-1] != '/': source+='/'
+
+    # Determine log structure/pattern
+    input_files = [ x for x in os.listdir(source) if (x.startswith(prefix) and x.endswith('_crit'+suffix)) ]
+    windows = len(input_files)
+    #print(windows)
+
+    # Stitch the windows together
+    for window in range(windows):
+        # Read the criteria file
+        crit_file = source + prefix + str(window) + '_crit'+suffix
+        #print(crit_file)
+        skip = [0] # we have to skip some number of lines, but how many depends on the bias mode
+        done = False
+        while not done:
+            with open(crit_file,mode='r') as handle:
+                criteria_data = pd.read_csv(handle, skiprows=skip)
+            try:
+                N_w = np.array(criteria_data['state'])
+                done = True
+            except:
+                skip = skip + [len(skip)]
+        #display(criteria_data)
+        if 'ln_prob.1' in criteria_data.columns:
+            # this covers WLTM cases
+            lnPi_w = np.array(criteria_data['ln_prob.1'])
+        else:
+            lnPi_w = np.array(criteria_data['ln_prob'])
+
+        # Read the energy file
+        #  This starts with the assumption that the sim was in "phase1"
+        energy_file = source + prefix + str(window) + '_energy'+suffix+'_phase1'
+        if not os.path.exists(energy_file):
+            # fall back to non-phase energy file
+            energy_file = source + prefix + str(window) + '_energy'+suffix
+            #print(energy_file)
+        with open(energy_file,mode='r') as handle:
+            energy_data = pd.read_csv(handle)
+        #display(energy_data)
+
+        energy_w = [ energy_data['moment0'][x]/float(energy_data['n'][x]) for x in energy_data['state'] ]
+        energy2_w = [ energy_data['moment1'][x]/float(energy_data['n'][x]) for x in energy_data['state'] ]
+
+        # Append data to the master arrays
+        if window == 0:
+            # Deep copy first window into master arrays
+            N = copy.deepcopy(N_w)
+            lnPi = copy.deepcopy(lnPi_w)
+            energy = copy.deepcopy(energy_w)
+            energy2 = copy.deepcopy(energy2_w)
+        else:
+            # Append to master arrays
+            Nold = [x for x in N] #storage
+            N, lnPi = append_data(N,lnPi,N_w,lnPi_w,splice_type='smoothed')
+            Ntmp, energy = append_data(Nold,energy,N_w,energy_w,splice_type=splice_type)
+            Ntmp, energy2 = append_data(Nold,energy2,N_w,energy2_w,splice_type=splice_type)
+
+    # #Convert to NumPy Arrays
+    N = np.array(N)
+    lnPi = np.array(lnPi)
+    energy = np.array(energy)
+    energy2 = np.array(energy2)
+
+    # # Normalize lnPi
+    lnPi= lnPi - max(lnPi)
+    lnPi = lnPi - np.log(sum(np.exp(lnPi)))
+
+    # Adjust Energy so that E(Nmin) = 0
+    #  NOTE: This does not affect the moments
+    energy2 = energy2 - 2.*energy[0]*energy + energy[0]**2
+    energy = energy - energy[0]
+
+    return N, lnPi, energy, energy2
