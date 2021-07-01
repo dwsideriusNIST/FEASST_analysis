@@ -97,11 +97,15 @@ def data_abstraction(source,prefix,suffix,splice_type='smoothed'):
         lnPi_w = [  criteria.bias().ln_prob().value(state) for state in range(criteria.num_states()) ]
 
         energy_analyzer = monte_carlo.analyze(monte_carlo.num_analyzers() - 1)
-        energy_w = [ energy_analyzer.analyze(state).accumulator().average()
-                     for state in range(criteria.num_states()) ]
-        energy2_w = [ energy_analyzer.analyze(state).accumulator().moment(1)
-                      /energy_analyzer.analyze(state).accumulator().num_values()
-                     for state in range(criteria.num_states()) ]
+        try:
+            energy_w = [ energy_analyzer.analyze(state).accumulator().average()
+                         for state in range(criteria.num_states()) ]
+            energy2_w = [ energy_analyzer.analyze(state).accumulator().moment(1)
+                          /energy_analyzer.analyze(state).accumulator().num_values()
+                          for state in range(criteria.num_states()) ]
+        except:
+            energy_w = [ 0. for state in range(criteria.num_states()) ]
+            energy2_w = [ 0. for state in range(criteria.num_states()) ]
         
         if window == 0:
             # Deep copy first window into master arrays
@@ -140,7 +144,7 @@ def data_abstraction(source,prefix,suffix,splice_type='smoothed'):
 
 
 
-def data_abstraction_logs(source,prefix,suffix,splice_type='smoothed'):
+def data_abstraction_logs(source,prefix,suffix,read_energy=True,splice_type='smoothed'):
 
     # Correct paths that do not end in /
     if source[-1] != '/': source+='/'
@@ -166,53 +170,71 @@ def data_abstraction_logs(source,prefix,suffix,splice_type='smoothed'):
             except:
                 skip = skip + [len(skip)]
         #display(criteria_data)
+
+        # Decide which bias column to read
         if 'ln_prob.1' in criteria_data.columns:
-            # this covers WLTM cases
-            lnPi_w = np.array(criteria_data['ln_prob.1'])
+            if set(criteria_data['ln_prob.1']) == {0.0}:
+                # not in TM mode yet, use WL bias
+                #print(window, 'using WL bias from WLTM (not in TM mode yet)')
+                lnPi_w = np.array(criteria_data['ln_prob'])
+            else:
+                # use TM bias
+                #print(window, 'using TM bias from WLTM (in TM mode)')
+                lnPi_w = np.array(criteria_data['ln_prob.1'])
         else:
+            #print(window, 'using default bias')
             lnPi_w = np.array(criteria_data['ln_prob'])
 
-        # Read the energy file
-        #  This starts with the assumption that the sim was in "phase1"
-        energy_file = source + prefix + str(window) + '_energy'+suffix+'_phase1'
-        if not os.path.exists(energy_file):
-            # fall back to non-phase energy file
-            energy_file = source + prefix + str(window) + '_energy'+suffix
-            #print(energy_file)
-        with open(energy_file,mode='r') as handle:
-            energy_data = pd.read_csv(handle)
-        #display(energy_data)
+        # If instructed, read energy files
+        if read_energy:
+            # Read the energy file
+            #  This starts with the assumption that the sim was in "phase1"
+            energy_file = source + prefix + str(window) + '_energy'+suffix+'_phase1'
+            if not os.path.exists(energy_file):
+                # fall back to non-phase energy file
+                energy_file = source + prefix + str(window) + '_energy'+suffix
+                #print(energy_file)
+            with open(energy_file,mode='r') as handle:
+                energy_data = pd.read_csv(handle)
+            #display(energy_data)
 
-        energy_w = [ energy_data['moment0'][x]/float(energy_data['n'][x]) for x in energy_data['state'] ]
-        energy2_w = [ energy_data['moment1'][x]/float(energy_data['n'][x]) for x in energy_data['state'] ]
+            energy_w = [ energy_data['moment0'][x]/float(energy_data['n'][x]) for x in energy_data['state'] ]
+            energy2_w = [ energy_data['moment1'][x]/float(energy_data['n'][x]) for x in energy_data['state'] ]
 
         # Append data to the master arrays
         if window == 0:
             # Deep copy first window into master arrays
             N = copy.deepcopy(N_w)
             lnPi = copy.deepcopy(lnPi_w)
-            energy = copy.deepcopy(energy_w)
-            energy2 = copy.deepcopy(energy2_w)
+            if read_energy:
+                energy = copy.deepcopy(energy_w)
+                energy2 = copy.deepcopy(energy2_w)
         else:
             # Append to master arrays
             Nold = [x for x in N] #storage
             N, lnPi = append_data(N,lnPi,N_w,lnPi_w,splice_type='smoothed')
-            Ntmp, energy = append_data(Nold,energy,N_w,energy_w,splice_type=splice_type)
-            Ntmp, energy2 = append_data(Nold,energy2,N_w,energy2_w,splice_type=splice_type)
+            if read_energy:
+                Ntmp, energy = append_data(Nold,energy,N_w,energy_w,splice_type=splice_type)
+                Ntmp, energy2 = append_data(Nold,energy2,N_w,energy2_w,splice_type=splice_type)
 
     # #Convert to NumPy Arrays
     N = np.array(N)
     lnPi = np.array(lnPi)
-    energy = np.array(energy)
-    energy2 = np.array(energy2)
+    if read_energy:
+        energy = np.array(energy)
+        energy2 = np.array(energy2)
 
     # # Normalize lnPi
     lnPi= lnPi - max(lnPi)
     lnPi = lnPi - np.log(sum(np.exp(lnPi)))
 
-    # Adjust Energy so that E(Nmin) = 0
-    #  NOTE: This does not affect the moments
-    energy2 = energy2 - 2.*energy[0]*energy + energy[0]**2
-    energy = energy - energy[0]
+    if read_energy:
+        # Adjust Energy so that E(Nmin) = 0
+        #  NOTE: This does not affect the moments
+        energy2 = energy2 - 2.*energy[0]*energy + energy[0]**2
+        energy = energy - energy[0]
+    else:
+        energy = []
+        energy2 = []
 
     return N, lnPi, energy, energy2

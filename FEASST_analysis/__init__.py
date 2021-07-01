@@ -68,13 +68,14 @@ class feasst_analysis(lnPi.lnPi_phases):
                   beta,
                   volume,
                   lnZ,  #betamu
+                  read_energy=True,
                   splice_type='smoothed',
                   ftag_phases=None):
         #Constructor method to build object from FEASST log files.
         #  WARNING: this method assumes 'standard' forms for the criteria and energy files
 
         # Read in N, lnPi, and energy data from new FEASST checkpoint files
-        N, lnPi, energy, energy2 = data_abstraction_logs(source,prefix,suffix,splice_type=splice_type)
+        N, lnPi, energy, energy2 = data_abstraction_logs(source,prefix,suffix,read_energy=read_energy,splice_type=splice_type)
         
         # Convert lnPi to format required by lnPi Class
         lnPi_data = np.array([ [float(Ni), lnPii] for Ni,lnPii in zip(N,lnPi) ])
